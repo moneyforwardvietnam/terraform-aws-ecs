@@ -95,32 +95,32 @@ EOF
 }
 
 resource "aws_iam_role_policy" "fargate_no_alb_s3" {
-  count = var.launch_type == "FARGATE_NO_ALB" && var.s3_policy ? 1 : 0
+  count = var.launch_type == "FARGATE_NO_ALB" && var.s3_policy && length(var.bucket_arn_list) > 0 ? 1 : 0
 
-  name   = "ecsTaskRoleS3PolicyNoAlb-${var.name}"
-  role   = aws_iam_role.fargate_ecs_task_role[0].name
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
+  name = "ecsTaskRoleS3PolicyNoAlb-${var.name}"
+  role = aws_iam_role.fargate_ecs_task_role[0].name
+  policy = jsonencode(
     {
-      "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket",
-        "s3:GetBucketLocation"
-      ],
-      "Resource": ${var.s3_policy} && length(${var.bucket_arn_list}) > 0 ? ${var.bucket_arn_list} : null
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:*"
-      ],
-      "Resource": ${var.s3_policy} && length(${var.bucket_arn_list}) > 0 ? [ for arn in ${var.bucket_arn_list} : "${arn}/*" ] : null
+      Statement = [
+        {
+          Action = [
+            "s3:ListBucket",
+            "s3:GetBucketLocation",
+          ]
+          Effect   = "Allow"
+          Resource = local.bucket_arn_list
+        },
+        {
+          Action = [
+            "s3:*",
+          ]
+          Effect   = "Allow"
+          Resource = local.sub_bucket_arn_list
+        },
+      ]
+      Version = "2012-10-17"
     }
-  ]
-}
-EOF
+  )
 }
 
 resource "aws_iam_role_policy" "fargate_no_alb" {

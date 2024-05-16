@@ -1,8 +1,4 @@
 // NOTE: var.launch_type = "FARGATE" if you want use following
-locals {
-  enable_service_discovery = var.enable_service_discovery
-  service_discovery_registry_arn = var.enable_service_discovery && var.service_discovery_registry_arn != "" ? var.service_discovery_registry_arn : null
-}
 resource "aws_ecs_service" "fargate" {
   count = var.launch_type == "FARGATE" ? 1 : 0
 
@@ -119,32 +115,32 @@ resource "aws_iam_role_policy" "fargate" {
 }
 
 resource "aws_iam_role_policy" "fargate_s3" {
-  count = var.launch_type == "FARGATE" && var.s3_policy ? 1 : 0
+  count = var.launch_type == "FARGATE" && var.s3_policy && length(var.bucket_arn_list) > 0  ? 1 : 0
 
   name   = "ecsTaskRoleS3Policy-${var.name}"
   role   = aws_iam_role.fargate_ecs_task_role[0].name
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
+  policy = jsonencode(
     {
-      "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket",
-        "s3:GetBucketLocation"
-      ],
-      "Resource": ${var.s3_policy} && length(${var.bucket_arn_list}) > 0 ? ${var.bucket_arn_list} : null
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:*"
-      ],
-      "Resource": ${var.s3_policy} && length(${var.bucket_arn_list}) > 0 ? [ for arn in ${var.bucket_arn_list} : "${arn}/*" ] : null
+      Statement = [
+        {
+          Action = [
+            "s3:ListBucket",
+            "s3:GetBucketLocation",
+          ]
+          Effect   = "Allow"
+          Resource = local.bucket_arn_list
+        },
+        {
+          Action = [
+            "s3:*",
+          ]
+          Effect   = "Allow"
+          Resource = local.sub_bucket_arn_list
+        },
+      ]
+      Version = "2012-10-17"
     }
-  ]
-}
-EOF
+  )
 }
 
 resource "aws_iam_role_policy_attachment" "fargate_task_execution" {
