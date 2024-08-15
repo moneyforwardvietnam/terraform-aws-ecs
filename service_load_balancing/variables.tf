@@ -3,7 +3,7 @@ variable "name" {
 }
 
 variable "cluster_name" {
-  description = "Name of ECS Cluster using for autoscaling"
+  description = "Name of ECS Cluster using for autoscaling group"
 }
 
 variable "platform_version" {
